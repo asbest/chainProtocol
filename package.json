@@ -1,0 +1,26 @@
+{
+  "name": "chainprotocol",
+  "version": "1.0.0",
+  "description": "With this protocol multiple user clients can communicate serverless with each other using a decentral, simple blockchain.",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "build-demo": "browserify demo.js -o bundle.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/asbest/chainProtocol.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/asbest/chainProtocol/issues"
+  },
+  "homepage": "https://github.com/asbest/chainProtocol#readme",
+  "dependencies": {
+    "browserify": "^17.0.1",
+    "jest": "^30.2.0",
+    "pako": "^2.1.0"
+  }
+}
