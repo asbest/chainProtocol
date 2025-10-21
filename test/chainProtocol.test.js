@@ -61,8 +61,7 @@ describe('Blockchain', () => {
 
     it('should generate a block and add it to the chain', () => {
         const data = { message: 'Hello, world!' };
-        const generateBlockForChain = generateBlock.bind(blockchain);
-        generateBlockForChain(data);
+        generateBlock(blockchain, data);
         expect(blockchain.chain.length).toBe(2);
         expect(blockchain.getLatestBlock().data).toEqual(data);
     });
