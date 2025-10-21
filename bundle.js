@@ -1,240 +1,339 @@
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
-const {
-    Blockchain,
-    Block,
-    generateBlock,
-    getObjectFromBlock
-} = require('./index');
+const { Blockchain, isValidTicTacToeTransition } = require('./index');
 
-const pako = require('pako');
+const boardElement = document.getElementById('game-board');
+const statusElement = document.getElementById('status');
+const resetButton = document.getElementById('reset-button');
 
-const blockchainA = new Blockchain();
-const blockchainB = new Blockchain();
+let blockchain = new Blockchain();
+let currentPlayer = 'X';
+let gameActive = true;
 
-const generateBlockForChainA = generateBlock.bind(blockchainA);
-const generateBlockForChainB = generateBlock.bind(blockchainB);
-
-const chatWindowA = document.getElementById('chat-window-a');
-const messageInputA = document.getElementById('message-input-a');
-const sendButtonA = document.getElementById('send-message-a');
-const saveChainButtonA = document.getElementById('save-chain-a');
-const showDecompressedA = document.getElementById('show-decompressed-a');
-const chainDataA = document.getElementById('chain-data-a');
-const decompressedDataA = document.getElementById('decompressed-data-a');
-const chainValidityA = document.getElementById('chain-validity-a');
-const loadChainInputA = document.getElementById('load-chain-input-a');
-const loadChainButtonA = document.getElementById('load-chain-a');
-
-const chatWindowB = document.getElementById('chat-window-b');
-const messageInputB = document.getElementById('message-input-b');
-const sendButtonB = document.getElementById('send-message-b');
-const saveChainButtonB = document.getElementById('save-chain-b');
-const showDecompressedB = document.getElementById('show-decompressed-b');
-const chainDataB = document.getElementById('chain-data-b');
-const decompressedDataB = document.getElementById('decompressed-data-b');
-const chainValidityB = document.getElementById('chain-validity-b');
-const loadChainInputB = document.getElementById('load-chain-input-b');
-const loadChainButtonB = document.getElementById('load-chain-b');
-
-function updateChatWindow(chatWindow, blockchainInstance) {
-    chatWindow.innerHTML = '';
-    blockchainInstance.chain.forEach(block => {
-        if (block.index === 0) return; // Skip genesis block for chat display
-        const messageElement = document.createElement('div');
-        messageElement.className = 'message';
-        messageElement.innerHTML = `
-            <p><b>${block.data.sender}:</b> ${block.data.message}</p>
-        `;
-        chatWindow.appendChild(messageElement);
-    });
-    chatWindow.scrollTop = chatWindow.scrollHeight; // Scroll to bottom
+function initializeGame() {
+    blockchain = new Blockchain();
+    const initialState = {
+        board: Array(9).fill(null),
+        turn: 'X',
+        winner: null,
+        isDraw: false
+    };
+    blockchain.generateBlock(initialState);
+    renderBoard();
+    updateStatus();
 }
 
-function updateChainStatus(blockchainInstance, chainValidityElement) {
-    const isValid = blockchainInstance.isChainValid();
-    chainValidityElement.textContent = `Chain Valid: ${isValid}`;
-    chainValidityElement.className = isValid ? 'chain-validity' : 'chain-validity invalid';
+function renderBoard() {
+    boardElement.innerHTML = '';
+    const latestBlock = blockchain.getLatestBlock();
+    const board = latestBlock.data.board;
+
+    for (let i = 0; i < board.length; i++) {
+        const cell = document.createElement('div');
+        cell.classList.add('cell');
+        cell.dataset.index = i;
+        cell.textContent = board[i];
+        cell.addEventListener('click', handleCellClick);
+        boardElement.appendChild(cell);
+    }
 }
 
-function updateAllDisplays() {
-    updateChatWindow(chatWindowA, blockchainA);
-    updateChainStatus(blockchainA, chainValidityA);
-    updateChatWindow(chatWindowB, blockchainB);
-    updateChainStatus(blockchainB, chainValidityB);
+function handleCellClick(event) {
+    const index = event.target.dataset.index;
+    const latestBlock = blockchain.getLatestBlock();
+    const currentState = latestBlock.data;
+
+    if (currentState.board[index] || !gameActive) {
+        return;
+    }
+
+    const nextState = JSON.parse(JSON.stringify(currentState));
+    nextState.board[index] = currentPlayer;
+    nextState.turn = currentPlayer === 'X' ? 'O' : 'X';
+
+    const { valid, reasons } = isValidTicTacToeTransition(currentState, nextState);
+
+    if (valid) {
+        const winnerInfo = checkWinner(nextState.board);
+        if (winnerInfo) {
+            nextState.winner = winnerInfo.winner;
+            gameActive = false;
+        } else if (nextState.board.every(cell => cell !== null)) {
+            nextState.isDraw = true;
+            gameActive = false;
+        }
+
+        blockchain.generateBlock(nextState);
+        currentPlayer = nextState.turn;
+        renderBoard();
+        updateStatus();
+    } else {
+        alert('Invalid move: ' + reasons.join(', '));
+    }
 }
 
-sendButtonA.addEventListener('click', () => {
-    const message = messageInputA.value;
-    if (message) {
-        generateBlockForChainA({ sender: 'Client A', message: message });
-        messageInputA.value = '';
-        updateAllDisplays();
+function updateStatus() {
+    const latestBlock = blockchain.getLatestBlock();
+    const { winner, isDraw, turn } = latestBlock.data;
+
+    if (winner) {
+        statusElement.textContent = `Player ${winner} wins!`;
+        gameActive = false;
+    } else if (isDraw) {
+        statusElement.textContent = 'The game is a draw!';
+        gameActive = false;
+    } else {
+        statusElement.textContent = `Player ${turn}'s turn`;
+        gameActive = true;
     }
-});
+}
 
-sendButtonB.addEventListener('click', () => {
-    const message = messageInputB.value;
-    if (message) {
-        generateBlockForChainB({ sender: 'Client B', message: message });
-        messageInputB.value = '';
-        updateAllDisplays();
-    }
-});
+function checkWinner(board) {
+    const winningCombos = [
+        [0, 1, 2], [3, 4, 5], [6, 7, 8], // rows
+        [0, 3, 6], [1, 4, 7], [2, 5, 8], // columns
+        [0, 4, 8], [2, 4, 6]             // diagonals
+    ];
 
-saveChainButtonA.addEventListener('click', () => {
-    chainDataA.value = blockchainA.save();
-});
-
-saveChainButtonB.addEventListener('click', () => {
-    chainDataB.value = blockchainB.save();
-});
-
-showDecompressedA.addEventListener('click', () => {
-    const compressedString = chainDataA.value;
-    if (compressedString) {
-        try {
-            const decompressed = pako.inflate(compressedString, { to: 'string' });
-            decompressedDataA.value = JSON.stringify(JSON.parse(decompressed), null, 2);
-        } catch (e) {
-            decompressedDataA.value = 'Error decompressing: ' + e.message;
+    for (const combo of winningCombos) {
+        const [a, b, c] = combo;
+        if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+            return { winner: board[a], combo };
         }
     }
-});
 
-showDecompressedB.addEventListener('click', () => {
-    const compressedString = chainDataB.value;
-    if (compressedString) {
-        try {
-            const decompressed = pako.inflate(compressedString, { to: 'string' });
-            decompressedDataB.value = JSON.stringify(JSON.parse(decompressed), null, 2);
-        } catch (e) {
-            decompressedDataB.value = 'Error decompressing: ' + e.message;
-        }
-    }
-});
+    return null;
+}
 
-loadChainButtonA.addEventListener('click', () => {
-    const compressedString = loadChainInputA.value;
-    if (compressedString) {
-        try {
-            const loaded = Blockchain.load(compressedString);
-            blockchainA.chain = loaded.chain;
-            updateAllDisplays();
-            alert('Client A: Blockchain loaded successfully!');
-        } catch (e) {
-            alert('Client A: Error loading blockchain: ' + e.message);
-        }
-    }
-});
+resetButton.addEventListener('click', initializeGame);
 
-loadChainButtonB.addEventListener('click', () => {
-    const compressedString = loadChainInputB.value;
-    if (compressedString) {
-        try {
-            const loaded = Blockchain.load(compressedString);
-            blockchainB.chain = loaded.chain;
-            updateAllDisplays();
-            alert('Client B: Blockchain loaded successfully!');
-        } catch (e) {
-            alert('Client B: Error loading blockchain: ' + e.message);
-        }
-    }
-});
-
-// Initial display
-updateAllDisplays();
-
-},{"./index":2,"pako":156}],2:[function(require,module,exports){
+initializeGame();
+},{"./index":2}],2:[function(require,module,exports){
+(function (Buffer){(function (){
 const crypto = require('crypto');
 const pako = require('pako');
 
 class Block {
-    constructor(index, timestamp, data, previousHash = '') {
-        this.index = index;
-        this.timestamp = timestamp;
-        this.data = data;
-        this.previousHash = previousHash;
-        this.hash = this.calculateHash(); // This will be called only when a new block is created
-    }
+  constructor(index, timestamp, data, previousHash = '') {
+    this.index = index;
+    this.timestamp = timestamp;
+    this.data = data;
+    this.previousHash = previousHash;
+    this.hash = this.calculateHash();
+  }
 
-    calculateHash() {
-        return crypto.createHash('sha256').update(this.index + this.previousHash + this.timestamp + JSON.stringify(this.data)).digest('hex');
-    }
+  calculateHash() {
+    return crypto
+      .createHash('sha256')
+      .update(
+        String(this.index) +
+        String(this.previousHash) +
+        String(this.timestamp) +
+        JSON.stringify(this.data)
+      )
+      .digest('hex');
+  }
 }
 
 class Blockchain {
-    constructor() {
-        this.chain = [this.createGenesisBlock()];
-    }
+  constructor() {
+    this.chain = [this.createGenesisBlock()];
+  }
 
-    createGenesisBlock() {
-        return new Block(0, Date.now(), "Genesis Block", "0");
-    }
+  createGenesisBlock() {
+    return new Block(0, Date.now(), 'Genesis Block', '0');
+  }
 
-    getLatestBlock() {
-        return this.chain[this.chain.length - 1];
-    }
+  getLatestBlock() {
+    return this.chain[this.chain.length - 1];
+  }
 
-    addBlock(newBlock) {
-        newBlock.previousHash = this.getLatestBlock().hash;
-        newBlock.hash = newBlock.calculateHash();
-        this.chain.push(newBlock);
-    }
+  addBlock(newBlock) {
+    newBlock.previousHash = this.getLatestBlock().hash;
+    newBlock.hash = newBlock.calculateHash();
+    this.chain.push(newBlock);
+  }
 
-    isChainValid() {
-        for (let i = 1; i < this.chain.length; i++) {
-            const currentBlock = this.chain[i];
-            const previousBlock = this.chain[i - 1];
-
-            if (currentBlock.hash !== currentBlock.calculateHash()) {
-                return false;
-            }
-
-            if (currentBlock.previousHash !== previousBlock.hash) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    save() {
-        const json = JSON.stringify(this.chain);
-        const compressed = pako.deflate(json, { to: 'string' });
-        return compressed;
-    }
-
-    static load(compressed) {
-        const json = pako.inflate(compressed, { to: 'string' });
-        const chainData = JSON.parse(json);
-        const blockchain = new Blockchain();
-        blockchain.chain = chainData.map(blockData => {
-            const block = new Block(blockData.index, blockData.timestamp, blockData.data, blockData.previousHash);
-            block.hash = blockData.hash; // Explicitly set the loaded hash
-            return block;
-        });
-        return blockchain;
-    }
-}
-
-function generateBlock(data) {
+  generateBlock(data) {
     const lastBlock = this.getLatestBlock();
-    const newBlock = new Block(lastBlock.index + 1, Date.now(), data, lastBlock.hash);
+    const newBlock = new Block(
+      lastBlock.index + 1,
+      Date.now(),
+      data,
+      lastBlock.hash
+    );
     this.addBlock(newBlock);
     return newBlock;
+  }
+
+  isChainValid() {
+    for (let i = 1; i < this.chain.length; i++) {
+      const currentBlock = this.chain[i];
+      const previousBlock = this.chain[i - 1];
+
+      if (currentBlock.hash !== currentBlock.calculateHash()) {
+        return false;
+      }
+
+      if (currentBlock.previousHash !== previousBlock.hash) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  save() {
+    const json = JSON.stringify(this.chain);
+    const deflated = pako.deflate(json);
+    return Buffer.from(deflated).toString('base64');
+  }
+
+  static load(base64) {
+    const buf = Buffer.from(base64, 'base64');
+    const json = pako.inflate(buf, { to: 'string' });
+    const chainData = JSON.parse(json);
+    const blockchain = new Blockchain();
+    blockchain.chain = chainData.map((blockData) => {
+      const block = new Block(
+        blockData.index,
+        blockData.timestamp,
+        blockData.data,
+        blockData.previousHash
+      );
+      block.hash = blockData.hash;
+      return block;
+    });
+    return blockchain;
+  }
 }
 
 function getObjectFromBlock(block) {
-    return block.data;
+  return block.data;
+}
+
+function isValidBlockTransition(prevBlock, nextBlock, options = {}) {
+    const reasons = [];
+    const {
+      verifyPrevHash = true,
+      allowTimeTravel = false,
+      maxTimeDrift = null
+    } = options;
+  
+    function hasBlockShape(b) {
+      return b && typeof b === 'object' &&
+        Object.prototype.hasOwnProperty.call(b, 'index') &&
+        Object.prototype.hasOwnProperty.call(b, 'timestamp') &&
+        Object.prototype.hasOwnProperty.call(b, 'data') &&
+        Object.prototype.hasOwnProperty.call(b, 'previousHash') &&
+        Object.prototype.hasOwnProperty.call(b, 'hash');
+    }
+  
+    if (!hasBlockShape(prevBlock)) {
+      reasons.push('prevBlock is missing required block fields');
+      return { valid: false, reasons };
+    }
+    if (!hasBlockShape(nextBlock)) {
+      reasons.push('nextBlock is missing required block fields');
+      return { valid: false, reasons };
+    }
+  
+    function computeHashForBlock(obj) {
+      return crypto
+        .createHash('sha256')
+        .update(
+          String(obj.index) +
+          String(obj.previousHash) +
+          String(obj.timestamp) +
+          JSON.stringify(obj.data)
+        )
+        .digest('hex');
+    }
+  
+    if (verifyPrevHash) {
+      const expectedPrevHash = computeHashForBlock(prevBlock);
+      if (prevBlock.hash !== expectedPrevHash) {
+        reasons.push(`prevBlock.hash is invalid (expected ${expectedPrevHash}, got ${prevBlock.hash})`);
+      }
+    }
+  
+    const expectedIndex = Number(prevBlock.index) + 1;
+    const nextIndex = Number(nextBlock.index);
+    if (!Number.isFinite(nextIndex) || nextIndex !== expectedIndex) {
+      reasons.push(`nextBlock.index must be prevBlock.index + 1 (expected ${expectedIndex}, got ${nextBlock.index})`);
+    }
+  
+    if (nextBlock.previousHash !== prevBlock.hash) {
+      reasons.push('nextBlock.previousHash does not match prevBlock.hash');
+    }
+  
+    const expectedNextHash = computeHashForBlock(nextBlock);
+    if (nextBlock.hash !== expectedNextHash) {
+      reasons.push(`nextBlock.hash is invalid (expected ${expectedNextHash}, got ${nextBlock.hash})`);
+    }
+  
+    const prevTs = Number(prevBlock.timestamp);
+    const nextTs = Number(nextBlock.timestamp);
+    if (!Number.isFinite(prevTs) || !Number.isFinite(nextTs)) {
+      reasons.push('timestamps must be numeric (ms since epoch)');
+    } else {
+      if (!allowTimeTravel && nextTs < prevTs) {
+        reasons.push(`nextBlock.timestamp (${nextTs}) is before prevBlock.timestamp (${prevTs}) and time travel is not allowed`);
+      }
+      if (maxTimeDrift !== null) {
+        const drift = nextTs - prevTs;
+        if (drift > Number(maxTimeDrift)) {
+          reasons.push(`time drift between blocks is too large: ${drift}ms (max allowed ${maxTimeDrift}ms)`);
+        }
+      }
+    }
+  
+    return { valid: reasons.length === 0, reasons };
+  }
+
+function isValidTicTacToeTransition(prevState, nextState) {
+    const reasons = [];
+
+    if (!nextState.board || !Array.isArray(nextState.board) || nextState.board.length !== 9) {
+        reasons.push('nextState must have a "board" property that is an array of 9 elements.');
+        return { valid: false, reasons };
+    }
+
+    if (prevState.winner || prevState.isDraw) {
+        reasons.push('Game is already over.');
+        return { valid: false, reasons };
+    }
+
+    let changes = 0;
+    let movedPlayer = null;
+    for (let i = 0; i < 9; i++) {
+        if (prevState.board[i] !== nextState.board[i]) {
+            changes++;
+            if (prevState.board[i] !== null) {
+                reasons.push(`Board position ${i} was illegally changed.`);
+            }
+            movedPlayer = nextState.board[i];
+        }
+    }
+
+    if (changes !== 1) {
+        reasons.push(`Expected 1 change, but found ${changes}.`);
+    }
+
+    if (movedPlayer !== prevState.turn) {
+        reasons.push(`It is ${prevState.turn}'s turn, but ${movedPlayer} moved.`);
+    }
+
+    return { valid: reasons.length === 0, reasons };
 }
 
 module.exports = {
-    Blockchain,
-    Block,
-    generateBlock,
-    getObjectFromBlock
+  Blockchain,
+  Block,
+  getObjectFromBlock,
+  isValidBlockTransition,
+  isValidTicTacToeTransition,
 };
-
-},{"crypto":68,"pako":156}],3:[function(require,module,exports){
+}).call(this)}).call(this,require("buffer").Buffer)
+},{"buffer":51,"crypto":68,"pako":156}],3:[function(require,module,exports){
 var asn1 = exports;
 
 asn1.bignum = require('bn.js');

@@ -1,144 +1,108 @@
-const {
-    Blockchain,
-    Block,
-    generateBlock,
-    getObjectFromBlock
-} = require('./index');
+const { Blockchain, isValidTicTacToeTransition } = require('./index');
 
-const pako = require('pako');
+const boardElement = document.getElementById('game-board');
+const statusElement = document.getElementById('status');
+const resetButton = document.getElementById('reset-button');
 
-const blockchainA = new Blockchain();
-const blockchainB = new Blockchain();
+let blockchain = new Blockchain();
+let currentPlayer = 'X';
+let gameActive = true;
 
-const generateBlockForChainA = generateBlock.bind(blockchainA);
-const generateBlockForChainB = generateBlock.bind(blockchainB);
-
-const chatWindowA = document.getElementById('chat-window-a');
-const messageInputA = document.getElementById('message-input-a');
-const sendButtonA = document.getElementById('send-message-a');
-const saveChainButtonA = document.getElementById('save-chain-a');
-const showDecompressedA = document.getElementById('show-decompressed-a');
-const chainDataA = document.getElementById('chain-data-a');
-const decompressedDataA = document.getElementById('decompressed-data-a');
-const chainValidityA = document.getElementById('chain-validity-a');
-const loadChainInputA = document.getElementById('load-chain-input-a');
-const loadChainButtonA = document.getElementById('load-chain-a');
-
-const chatWindowB = document.getElementById('chat-window-b');
-const messageInputB = document.getElementById('message-input-b');
-const sendButtonB = document.getElementById('send-message-b');
-const saveChainButtonB = document.getElementById('save-chain-b');
-const showDecompressedB = document.getElementById('show-decompressed-b');
-const chainDataB = document.getElementById('chain-data-b');
-const decompressedDataB = document.getElementById('decompressed-data-b');
-const chainValidityB = document.getElementById('chain-validity-b');
-const loadChainInputB = document.getElementById('load-chain-input-b');
-const loadChainButtonB = document.getElementById('load-chain-b');
-
-function updateChatWindow(chatWindow, blockchainInstance) {
-    chatWindow.innerHTML = '';
-    blockchainInstance.chain.forEach(block => {
-        if (block.index === 0) return; // Skip genesis block for chat display
-        const messageElement = document.createElement('div');
-        messageElement.className = 'message';
-        messageElement.innerHTML = `
-            <p><b>${block.data.sender}:</b> ${block.data.message}</p>
-        `;
-        chatWindow.appendChild(messageElement);
-    });
-    chatWindow.scrollTop = chatWindow.scrollHeight; // Scroll to bottom
+function initializeGame() {
+    blockchain = new Blockchain();
+    const initialState = {
+        board: Array(9).fill(null),
+        turn: 'X',
+        winner: null,
+        isDraw: false
+    };
+    blockchain.generateBlock(initialState);
+    renderBoard();
+    updateStatus();
 }
 
-function updateChainStatus(blockchainInstance, chainValidityElement) {
-    const isValid = blockchainInstance.isChainValid();
-    chainValidityElement.textContent = `Chain Valid: ${isValid}`;
-    chainValidityElement.className = isValid ? 'chain-validity' : 'chain-validity invalid';
+function renderBoard() {
+    boardElement.innerHTML = '';
+    const latestBlock = blockchain.getLatestBlock();
+    const board = latestBlock.data.board;
+
+    for (let i = 0; i < board.length; i++) {
+        const cell = document.createElement('div');
+        cell.classList.add('cell');
+        cell.dataset.index = i;
+        cell.textContent = board[i];
+        cell.addEventListener('click', handleCellClick);
+        boardElement.appendChild(cell);
+    }
 }
 
-function updateAllDisplays() {
-    updateChatWindow(chatWindowA, blockchainA);
-    updateChainStatus(blockchainA, chainValidityA);
-    updateChatWindow(chatWindowB, blockchainB);
-    updateChainStatus(blockchainB, chainValidityB);
+function handleCellClick(event) {
+    const index = event.target.dataset.index;
+    const latestBlock = blockchain.getLatestBlock();
+    const currentState = latestBlock.data;
+
+    if (currentState.board[index] || !gameActive) {
+        return;
+    }
+
+    const nextState = JSON.parse(JSON.stringify(currentState));
+    nextState.board[index] = currentPlayer;
+    nextState.turn = currentPlayer === 'X' ? 'O' : 'X';
+
+    const { valid, reasons } = isValidTicTacToeTransition(currentState, nextState);
+
+    if (valid) {
+        const winnerInfo = checkWinner(nextState.board);
+        if (winnerInfo) {
+            nextState.winner = winnerInfo.winner;
+            gameActive = false;
+        } else if (nextState.board.every(cell => cell !== null)) {
+            nextState.isDraw = true;
+            gameActive = false;
+        }
+
+        blockchain.generateBlock(nextState);
+        currentPlayer = nextState.turn;
+        renderBoard();
+        updateStatus();
+    } else {
+        alert('Invalid move: ' + reasons.join(', '));
+    }
 }
 
-sendButtonA.addEventListener('click', () => {
-    const message = messageInputA.value;
-    if (message) {
-        generateBlockForChainA({ sender: 'Client A', message: message });
-        messageInputA.value = '';
-        updateAllDisplays();
+function updateStatus() {
+    const latestBlock = blockchain.getLatestBlock();
+    const { winner, isDraw, turn } = latestBlock.data;
+
+    if (winner) {
+        statusElement.textContent = `Player ${winner} wins!`;
+        gameActive = false;
+    } else if (isDraw) {
+        statusElement.textContent = 'The game is a draw!';
+        gameActive = false;
+    } else {
+        statusElement.textContent = `Player ${turn}'s turn`;
+        gameActive = true;
     }
-});
+}
 
-sendButtonB.addEventListener('click', () => {
-    const message = messageInputB.value;
-    if (message) {
-        generateBlockForChainB({ sender: 'Client B', message: message });
-        messageInputB.value = '';
-        updateAllDisplays();
-    }
-});
+function checkWinner(board) {
+    const winningCombos = [
+        [0, 1, 2], [3, 4, 5], [6, 7, 8], // rows
+        [0, 3, 6], [1, 4, 7], [2, 5, 8], // columns
+        [0, 4, 8], [2, 4, 6]             // diagonals
+    ];
 
-saveChainButtonA.addEventListener('click', () => {
-    chainDataA.value = blockchainA.save();
-});
-
-saveChainButtonB.addEventListener('click', () => {
-    chainDataB.value = blockchainB.save();
-});
-
-showDecompressedA.addEventListener('click', () => {
-    const compressedString = chainDataA.value;
-    if (compressedString) {
-        try {
-            const decompressed = pako.inflate(compressedString, { to: 'string' });
-            decompressedDataA.value = JSON.stringify(JSON.parse(decompressed), null, 2);
-        } catch (e) {
-            decompressedDataA.value = 'Error decompressing: ' + e.message;
+    for (const combo of winningCombos) {
+        const [a, b, c] = combo;
+        if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+            return { winner: board[a], combo };
         }
     }
-});
 
-showDecompressedB.addEventListener('click', () => {
-    const compressedString = chainDataB.value;
-    if (compressedString) {
-        try {
-            const decompressed = pako.inflate(compressedString, { to: 'string' });
-            decompressedDataB.value = JSON.stringify(JSON.parse(decompressed), null, 2);
-        } catch (e) {
-            decompressedDataB.value = 'Error decompressing: ' + e.message;
-        }
-    }
-});
+    return null;
+}
 
-loadChainButtonA.addEventListener('click', () => {
-    const compressedString = loadChainInputA.value;
-    if (compressedString) {
-        try {
-            const loaded = Blockchain.load(compressedString);
-            blockchainA.chain = loaded.chain;
-            updateAllDisplays();
-            alert('Client A: Blockchain loaded successfully!');
-        } catch (e) {
-            alert('Client A: Error loading blockchain: ' + e.message);
-        }
-    }
-});
+resetButton.addEventListener('click', initializeGame);
 
-loadChainButtonB.addEventListener('click', () => {
-    const compressedString = loadChainInputB.value;
-    if (compressedString) {
-        try {
-            const loaded = Blockchain.load(compressedString);
-            blockchainB.chain = loaded.chain;
-            updateAllDisplays();
-            alert('Client B: Blockchain loaded successfully!');
-        } catch (e) {
-            alert('Client B: Error loading blockchain: ' + e.message);
-        }
-    }
-});
-
-// Initial display
-updateAllDisplays();
+initializeGame();

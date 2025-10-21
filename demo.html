@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chain Protocol Demo - Multiplayer Chat</title>
+    <title>Chain Protocol Demo - Tic Tac Toe</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -22,119 +22,34 @@
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
-        .client-section {
-            display: flex;
-            flex-direction: column;
-            margin-bottom: 30px;
-            border: 1px solid #007bff;
-            padding: 15px;
-            border-radius: 8px;
+        #game-board {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-gap: 5px;
+            margin-bottom: 20px;
         }
-        .client-section h2 {
-            color: #007bff;
-            margin-top: 0;
-        }
-        .chat-window {
+        .cell {
+            width: 100px;
+            height: 100px;
             border: 1px solid #ccc;
-            height: 200px;
-            overflow-y: scroll;
-            padding: 10px;
-            margin-bottom: 10px;
-            background-color: #e9e9e9;
-            border-radius: 4px;
-        }
-        .message {
-            margin-bottom: 5px;
-        }
-        .message strong {
-            color: #333;
-        }
-        .block-controls {
             display: flex;
-            margin-top: 10px;
             align-items: center;
+            justify-content: center;
+            font-size: 2em;
+            cursor: pointer;
         }
-        .block-controls input[type="text"] {
-            flex-grow: 1;
-            margin-right: 10px;
-        }
-        .chain-actions {
-            margin-top: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        .chain-actions textarea {
-            width: 100%;
-            height: 80px;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            resize: vertical;
-        }
-        .chain-actions button {
-            width: fit-content;
-            align-self: flex-start;
-        }
-        .chain-validity {
-            font-weight: bold;
-            margin-top: 10px;
-            color: #28a745;
-        }
-        .chain-validity.invalid {
-            color: #dc3545;
+        #status {
+            margin-bottom: 20px;
+            font-size: 1.2em;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Chain Protocol Demo - Multiplayer Chat</h1>
-        <p>This demo illustrates how the decentralized blockchain protocol can be used for serverless multiplayer communication, such as a chat application. Each client maintains its own copy of the blockchain. Messages are added as blocks, and clients can sync their chains by exchanging the compressed blockchain string.</p>
-
-        <div class="client-section">
-            <h2>Client A</h2>
-            <div class="chat-window" id="chat-window-a"></div>
-            <div class="block-controls">
-                <input type="text" id="message-input-a" placeholder="Type your message...">
-                <button id="send-message-a">Send Message</button>
-            </div>
-            <div class="chain-actions">
-                <button id="save-chain-a">Save Chain A</button>
-                <button id="show-decompressed-a">Show Decompressed A</button>
-                <textarea id="chain-data-a" readonly placeholder="Client A's compressed blockchain"></textarea>
-                <textarea id="decompressed-data-a" readonly placeholder="Client A's decompressed blockchain (JSON)"></textarea>
-                <p id="chain-validity-a" class="chain-validity"></p>
-            </div>
-        </div>
-
-        <div class="client-section">
-            <h2>Client B</h2>
-            <div class="chat-window" id="chat-window-b"></div>
-            <div class="block-controls">
-                <input type="text" id="message-input-b" placeholder="Type your message...">
-                <button id="send-message-b">Send Message</button>
-            </div>
-            <div class="chain-actions">
-                <button id="save-chain-b">Save Chain B</button>
-                <button id="show-decompressed-b">Show Decompressed B</button>
-                <textarea id="chain-data-b" readonly placeholder="Client B's compressed blockchain"></textarea>
-                <textarea id="decompressed-data-b" readonly placeholder="Client B's decompressed blockchain (JSON)"></textarea>
-                <p id="chain-validity-b" class="chain-validity"></p>
-            </div>
-        </div>
-
-        <div class="client-section">
-            <h2>Sync Chains</h2>
-            <p>To simulate syncing, copy the compressed chain string from one client's textarea and paste it into the other client's textarea, then click 'Load Chain'.</p>
-            <div class="chain-actions">
-                <textarea id="load-chain-input-a" placeholder="Paste chain from Client B to load into Client A"></textarea>
-                <button id="load-chain-a">Load Chain into A</button>
-            </div>
-            <div class="chain-actions">
-                <textarea id="load-chain-input-b" placeholder="Paste chain from Client A to load into Client B"></textarea>
-                <button id="load-chain-b">Load Chain into B</button>
-            </div>
-        </div>
+        <h1>Chain Protocol Demo - Tic Tac Toe</h1>
+        <div id="status"></div>
+        <div id="game-board"></div>
+        <button id="reset-button">Reset Game</button>
     </div>
 
     <script src="bundle.js"></script>
