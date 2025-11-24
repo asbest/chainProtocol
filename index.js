@@ -1,5 +1,7 @@
 const crypto = require('crypto');
 const pako = require('pako');
+const { TorSignalingHost, TorSignalingClient } = require('./lib/tor-signaling');
+const P2PNode = require('./lib/webrtc-node');
 
 class Block {
   constructor(index, timestamp, data, previousHash = '') {
@@ -220,4 +222,7 @@ module.exports = {
   getObjectFromBlock,
   isValidBlockTransition,
   isValidTicTacToeTransition,
+  TorSignalingHost,
+  TorSignalingClient,
+  P2PNode
 };
