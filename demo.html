@@ -3,74 +3,176 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chain Protocol Demo - Tic Tac Toe</title>
+    <title>P2P Tic-Tac-Toe</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
         body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            background-color: #f4f4f4;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
             display: flex;
-            flex-direction: column;
+            justify-content: center;
             align-items: center;
+            padding: 20px;
         }
         .container {
-            max-width: 900px;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
             width: 100%;
-            margin: 20px 0;
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 30px;
+            font-size: 2em;
+        }
+        #status {
+            text-align: center;
+            padding: 15px;
+            margin-bottom: 20px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            font-weight: 600;
+            color: #333;
         }
         #game-board {
             display: grid;
-            grid-template-columns: repeat(3, 100px);
-            grid-gap: 5px;
-            margin-bottom: 20px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 30px;
+            max-width: 350px;
+            margin-left: auto;
+            margin-right: auto;
         }
         .cell {
-            width: 100px;
-            height: 100px;
-            border: 1px solid #ccc;
+            aspect-ratio: 1;
+            background: #f8f8f8;
+            border: 3px solid #667eea;
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2em;
+            font-size: 3em;
+            font-weight: bold;
             cursor: pointer;
+            transition: all 0.2s;
         }
-        #status {
-            margin-bottom: 20px;
+        .cell:hover:not(:has(.X)):not(:has(.O)) {
+            background: #e8ecff;
+            transform: scale(1.05);
+        }
+        .cell.disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        .X {
+            color: #667eea;
+        }
+        .O {
+            color: #764ba2;
+        }
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        button {
+            padding: 15px 30px;
+            font-size: 1em;
+            font-weight: 600;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #667eea;
+            color: white;
+        }
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        input {
+            padding: 12px;
+            font-size: 1em;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            text-align: center;
+        }
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .room-code {
+            background: #fffbeb;
+            border: 2px dashed #fbbf24;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            margin-top: 15px;
+        }
+        .room-code strong {
+            color: #f59e0b;
             font-size: 1.2em;
+            font-family: monospace;
         }
-        .connection-info {
-            margin-bottom: 20px;
+        .section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #eee;
+        }
+        .hidden {
+            display: none;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Chain Protocol Demo - Tic Tac Toe</h1>
-        <div id="status"></div>
+        <h1>🎮 P2P Tic-Tac-Toe</h1>
+        
+        <div id="status">Wähle eine Option...</div>
+        
         <div id="game-board"></div>
-        <button id="reset-button">Reset Game</button>
-        <div class="connection-info">
-            <h2>Multiplayer</h2>
-            <div>
-                <input type="text" id="onion-address" placeholder="Enter Tor signaling server onion address">
+        
+        <div class="controls">
+            <div id="menu">
+                <button id="host-button">🎯 Neues Spiel erstellen</button>
+                <button id="join-button">🔗 Spiel beitreten</button>
             </div>
-            <hr>
-            <div>
-                <button id="host-button">Host Game</button>
-                <div id="host-info"></div>
+            
+            <div id="host-section" class="section hidden">
+                <div class="room-code">
+                    <div>Deine Raum-ID:</div>
+                    <strong id="room-code"></strong>
+                    <div style="margin-top: 10px; font-size: 0.9em; color: #666;">
+                        Teile diese ID mit deinem Mitspieler!
+                    </div>
+                </div>
             </div>
-            <hr>
-            <div>
-                <input type="text" id="game-id" placeholder="Enter Game ID to join">
-                <button id="connect-button">Join Game</button>
+            
+            <div id="join-section" class="section hidden">
+                <input type="text" id="room-input" placeholder="Raum-ID eingeben">
+                <button id="connect-button">Verbinden</button>
+                <button id="back-button">Zurück</button>
             </div>
+            
+            <button id="reset-button" class="hidden">🔄 Neues Spiel</button>
         </div>
     </div>
 
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <script src="bundle.js"></script>
 </body>
 </html>
