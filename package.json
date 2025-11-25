@@ -3,9 +3,11 @@
   "version": "1.0.0",
   "description": "With this protocol multiple user clients can communicate serverless with each other using a decentral, simple blockchain.",
   "main": "index.js",
+  "browser": "index-browser.js",
   "scripts": {
     "test": "jest",
-    "build-demo": "browserify demo.js -o bundle.js"
+    "build-demo": "browserify demo.js -o bundle.js",
+    "start-server": "node server.js"
   },
   "repository": {
     "type": "git",
