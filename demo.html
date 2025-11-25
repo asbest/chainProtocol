@@ -156,8 +156,9 @@
                 <div class="room-code">
                     <div>Deine Raum-ID:</div>
                     <strong id="room-code"></strong>
+                    <div id="qrcode" style="margin: 20px auto; display: flex; justify-content: center;"></div>
                     <div style="margin-top: 10px; font-size: 0.9em; color: #666;">
-                        Teile diese ID mit deinem Mitspieler!
+                        📱 Scanne den QR-Code oder teile die ID!
                     </div>
                 </div>
             </div>
@@ -165,7 +166,13 @@
             <div id="join-section" class="section hidden">
                 <input type="text" id="room-input" placeholder="Raum-ID eingeben">
                 <button id="connect-button">Verbinden</button>
+                <button id="scan-button">📷 QR-Code scannen</button>
                 <button id="back-button">Zurück</button>
+                
+                <div id="qr-reader" class="hidden" style="margin-top: 20px;">
+                    <div id="qr-reader-container"></div>
+                    <button id="stop-scan-button" style="margin-top: 10px;">Scanner stoppen</button>
+                </div>
             </div>
             
             <button id="reset-button" class="hidden">🔄 Neues Spiel</button>
@@ -173,6 +180,8 @@
     </div>
 
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <script src="https://unpkg.com/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script src="bundle.js"></script>
 </body>
 </html>

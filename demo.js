@@ -14,6 +14,10 @@ const roomCodeElement = document.getElementById('room-code');
 const menuDiv = document.getElementById('menu');
 const hostSection = document.getElementById('host-section');
 const joinSection = document.getElementById('join-section');
+const scanButton = document.getElementById('scan-button');
+const stopScanButton = document.getElementById('stop-scan-button');
+const qrReaderDiv = document.getElementById('qr-reader');
+const qrReaderContainer = document.getElementById('qr-reader-container');
 
 // Game State
 let peer;
@@ -23,6 +27,7 @@ let gameActive = false;
 let board = Array(9).fill(null);
 let currentTurn = 'X';
 let winner = null;
+let html5QrCode = null;
 
 // --- Game Logic ---
 function initializeGame() {
@@ -163,6 +168,19 @@ hostButton.addEventListener('click', () => {
     peer.on('open', (id) => {
         console.log('Peer ID:', id);
         roomCodeElement.textContent = id;
+        
+        // Generiere QR-Code
+        const qrcodeDiv = document.getElementById('qrcode');
+        qrcodeDiv.innerHTML = ''; // Clear previous QR code
+        new QRCode(qrcodeDiv, {
+            text: id,
+            width: 200,
+            height: 200,
+            colorDark: '#667eea',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.H
+        });
+        
         menuDiv.classList.add('hidden');
         hostSection.classList.remove('hidden');
         statusElement.textContent = '⏳ Warte auf Mitspieler...';
@@ -218,10 +236,62 @@ connectButton.addEventListener('click', () => {
 });
 
 backButton.addEventListener('click', () => {
+    // Stop QR scanner if running
+    if (html5QrCode) {
+        html5QrCode.stop().catch(err => console.error('Error stopping scanner:', err));
+        html5QrCode = null;
+    }
+    
     joinSection.classList.add('hidden');
+    qrReaderDiv.classList.add('hidden');
     menuDiv.classList.remove('hidden');
     statusElement.textContent = 'Wähle eine Option...';
     roomInput.value = '';
+});
+
+scanButton.addEventListener('click', () => {
+    qrReaderDiv.classList.remove('hidden');
+    scanButton.disabled = true;
+    
+    html5QrCode = new Html5Qrcode("qr-reader-container");
+    
+    html5QrCode.start(
+        { facingMode: "environment" }, // Rückkamera
+        {
+            fps: 10,
+            qrbox: { width: 250, height: 250 }
+        },
+        (decodedText) => {
+            console.log('QR-Code gescannt:', decodedText);
+            roomInput.value = decodedText;
+            
+            // Stop scanner
+            html5QrCode.stop().then(() => {
+                html5QrCode = null;
+                qrReaderDiv.classList.add('hidden');
+                scanButton.disabled = false;
+                statusElement.textContent = 'QR-Code erkannt! Klicke "Verbinden"';
+            }).catch(err => console.error('Error stopping scanner:', err));
+        },
+        (errorMessage) => {
+            // Ignore scan errors (happens constantly while scanning)
+        }
+    ).catch(err => {
+        console.error('Fehler beim Starten der Kamera:', err);
+        alert('Kamera-Zugriff fehlgeschlagen. Bitte erlaube den Kamera-Zugriff.');
+        scanButton.disabled = false;
+        qrReaderDiv.classList.add('hidden');
+    });
+});
+
+stopScanButton.addEventListener('click', () => {
+    if (html5QrCode) {
+        html5QrCode.stop().then(() => {
+            html5QrCode = null;
+            qrReaderDiv.classList.add('hidden');
+            scanButton.disabled = false;
+        }).catch(err => console.error('Error stopping scanner:', err));
+    }
 });
 
 resetButton.addEventListener('click', () => {
