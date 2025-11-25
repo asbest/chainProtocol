@@ -42,6 +42,9 @@
             margin-bottom: 20px;
             font-size: 1.2em;
         }
+        .connection-info {
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
@@ -50,6 +53,22 @@
         <div id="status"></div>
         <div id="game-board"></div>
         <button id="reset-button">Reset Game</button>
+        <div class="connection-info">
+            <h2>Multiplayer</h2>
+            <div>
+                <input type="text" id="onion-address" placeholder="Enter Tor signaling server onion address">
+            </div>
+            <hr>
+            <div>
+                <button id="host-button">Host Game</button>
+                <div id="host-info"></div>
+            </div>
+            <hr>
+            <div>
+                <input type="text" id="game-id" placeholder="Enter Game ID to join">
+                <button id="connect-button">Join Game</button>
+            </div>
+        </div>
     </div>
 
     <script src="bundle.js"></script>
