@@ -12,8 +12,8 @@ const rl = readline.createInterface({
 const args = process.argv.slice(2);
 const command = args[0];
 
-if (!command || (command !== 'host' && command !== 'join')) {
-    console.log('Usage: node demo-cli.js <host|join> [port/address]');
+if (!command || (command !== 'host' && command !== 'join' && command !== 'host-steam' && command !== 'join-steam')) {
+    console.log('Usage: node demo-cli.js <host|join|host-steam|join-steam> [port/address]');
     process.exit(1);
 }
 
@@ -269,4 +269,37 @@ if (command === 'host') {
              }, 1000);
         }
     }, 500);
+} else if (command === 'host-steam') {
+    const appId = parseInt(args[1]) || 480; // Default to Spacewar
+    console.log(`Hosting via Steam with AppID ${appId}...`);
+    mySymbol = 'X';
+    p2pNode.blockchain.generateBlock(currentState);
+    p2pNode.hostViaSteam(appId, (peer) => {
+        console.log('Player connected via Steam!');
+        connectedPeer = peer;
+        renderBoard(currentState);
+    });
+} else if (command === 'join-steam') {
+    const appId = parseInt(args[1]) || 480;
+    const lobbyId = args[2];
+    if (!lobbyId) {
+        console.log('Usage: node demo-cli.js join-steam <appId> <lobbyId>');
+        process.exit(1);
+    }
+    console.log(`Joining Steam lobby ${lobbyId} with AppID ${appId}...`);
+    mySymbol = 'O';
+    p2pNode.joinViaSteam(appId, lobbyId).then((peer) => {
+        console.log('Connected to host via Steam!');
+        connectedPeer = peer;
+        setTimeout(() => {
+            const latest = p2pNode.blockchain.getLatestBlock();
+            if (latest.index > 0) {
+                currentState = latest.data;
+            }
+            renderBoard(currentState);
+        }, 1000);
+    }).catch(err => {
+        console.error('Failed to connect via Steam:', err);
+        process.exit(1);
+    });
 }
