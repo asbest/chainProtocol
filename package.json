@@ -25,7 +25,8 @@
     "jest": "^30.2.0",
     "node-fetch": "^3.3.2",
     "simple-peer": "^9.11.1",
-    "socks-proxy-agent": "^8.0.5"
+    "socks-proxy-agent": "^8.0.5",
+    "steamworks.js": "^0.4.0"
   },
   "devDependencies": {
     "pako": "^2.1.0"
